@@ -1,5 +1,5 @@
 <template>
-  <main id="main" class="d-flex align-items-center justify-content-center h-full py-3">
+  <main id="main" class="d-flex align-items-center justify-content-center h-full p-3">
     <ToolBody />
   </main>
 </template>

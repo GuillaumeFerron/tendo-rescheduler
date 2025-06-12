@@ -1,28 +1,28 @@
 <template>
-  <div class="card mb-0 w-75">
-    <div class="card-body px-5">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <h3>Title</h3>
-        </div>
-        <div v-if="tooltipContent.length > 0" v-tooltip="{
-          content: tooltipContent,
-          html: true,
-          hideTriggers: ['click'],
-          autoHide: true
-        }" class="clickable">
-          <h3>ⓘ</h3>
-        </div>
+  <div class="card p-3">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h3>Rescheduler</h3>
       </div>
-      -- Tool Here --
+      <div v-if="tooltipContent.length > 0" v-tooltip="{
+        content: tooltipContent,
+        html: true,
+        hideTriggers: ['click'],
+        autoHide: true
+      }" class="clickable">
+        <h3>ⓘ</h3>
+      </div>
     </div>
+    <TendoRescheduler />
   </div>
 </template>
 
 <script>
+import TendoRescheduler from '../TendoRescheduler.vue'
+
 export default {
   components: {
-    //
+    TendoRescheduler
   },
   data() {
     return {
