@@ -1,16 +1,49 @@
 <template>
   <div class="w-100">
     <div class="row">
-      <div class="col-12">
+      <div class="col-12 col-md-6">
         <div>
-          <label for="raw">Raw Input</label><br>
-          <small><i>Recommended</i></small>
-          <textarea class="form-control" id="raw" v-model="data.raw" rows="4" @change="recomputeOutput"></textarea>
-        </div>
-        <div class="mt-3">
           <label for="file">Raw File</label><br>
           <small><i>Only accepts CSV</i></small>
           <input type="file" class="form-control" id="file" @change="onFileChange" accept=".csv" :multiple="false" />
+        </div>
+        <div class="mt-3">
+          <label for="file">Employer Name</label><br>
+          <input type="text" class="form-control" id="employer" v-model="data.employer">
+        </div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="row justify-content-between align-items-end">
+            <div class="col-5">
+              <label for="curent-payroll-first">Current Payroll Dates</label>
+              <select name="Current Payroll - First Due Date" id="curent-payroll-first" class="form-control" v-model="data.currentPayroll[0]" @change="recomputeOutput">
+                <option :value="null"></option>
+                <option v-for="value in payrollDates" :value="value" :key="`${value}_current_first_payroll`">{{ value }}</option>
+              </select>
+              <select name="Current Payroll - Second Due Date" id="curent-payroll-second" class="form-control mt-1" v-model="data.currentPayroll[1]" @change="recomputeOutput">
+                <option :value="null"></option>
+                <option v-for="value in payrollDates" :value="value" :key="`${value}_current_second_payroll`">{{ value }}</option>
+              </select>
+            </div>
+            <div class="col-2 text-center">
+              <h2 class="m-0">
+                ➡️
+              </h2>
+              <h2 class="m-0 mt-1">
+                ➡️
+              </h2>
+            </div>
+            <div class="col-5">
+              <label for="new-payroll-first">New Payroll Dates</label>
+              <select name="New Payroll - First Due Date" id="new-payroll-first" class="form-control" v-model="data.newPayroll[0]" @change="recomputeOutput">
+                <option :value="null"></option>
+                <option v-for="value in payrollDates" :value="value" :key="`${value}_new_first_payroll`">{{ value }}</option>
+              </select>
+              <select name="New Payroll - Second Due Date" id="new-payroll-second" class="form-control mt-1" v-model="data.newPayroll[1]" @change="recomputeOutput">
+                <option :value="null"></option>
+                <option v-for="value in payrollDates" :value="value" :key="`${value}_new_second_payroll`">{{ value }}</option>
+              </select>
+            </div>
         </div>
       </div>
     </div>
@@ -27,19 +60,33 @@
             <tr class="table-primary">
               <th scope="col" v-for="header in headers" :key="header">
                 <p class="mb-0">{{ header }}</p>
-                <select :id="`${header}-select`" class="form-control p-0" v-model="data.mapping[header]"
-                  @change="recomputeOutputMapped">
-                  <option value=""></option>
-                  <option v-for="inputHeader in inputHeaders" :value="inputHeader" :key="inputHeader">{{
-                    inputHeader }}
-                  </option>
-                </select>
               </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(row, rowIndex) in (outputMapped || []).slice(0, displayLimit)" :key="`row-${rowIndex}`">
               <td scope="row" v-for="(value, columnIndex) in row" :key="`${columnIndex}-column`">{{ value }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <hr class="mt-4">
+    <div class="row mt-3 w-100">
+      <h5>Checks</h5>
+      <h6 :class="`p-2 w-25 rounded text-center fw-bold text-uppercase text-white ${this.fullValid ? 'bg-success' : 'bg-error'}`">{{ this.fullValid ? 'Checks passed' : 'Checks did not pass' }}</h6>
+      <div class="col-12">
+        <table class="table table-bordered table-hover">
+          <thead>
+            <th scope="col">Due Dates</th>
+            <th class="text-end" scope="col">Diff in Amounts</th>
+            <th class="text-end" scope="col">Diff between Old and New</th>
+          </thead>
+          <tbody>
+            <tr v-for="(rowValue, rowDate) in checks" :key="rowDate">
+              <td>{{ rowDate }}</td>
+              <td :class="`text-end ${rowValue.amountValid ? 'text-success' : 'text-error fw-bold'}`">{{ rowValue.amount }}</td>
+              <td :class="`text-end ${rowValue.diffValid ? 'text-success' : 'text-error fw-bold'}`">{{ rowValue.diffBetweenOldNew }}</td>
             </tr>
           </tbody>
         </table>
@@ -67,27 +114,20 @@
 </template>
 
 <script>
-  const CACHE_KEY = 'TENDOPAY_ELS_FORMATTER'
+  const CACHE_KEY = 'TENDOPAY_RESCHEDULER'
   const FORCE_CACHE = true
-  const CSV_LIMIT = 10000
-  const DISPLAY_LIMIT = 250
+  const CSV_LIMIT = 50000
+  const DISPLAY_LIMIT = 100
   const HEADERS = [
-    'employee_number',
-    'firstname',
-    'middlename',
-    'lastname',
-    'email',
-    'birthdate',
-    'employment_id',
-    'gross_income',
-    'net_income',
-    'department',
-    'job_title',
-    'hired_date',
-    'recommended_interest_rate',
-    'recommended_credit_limit',
-    'phone_number',
-    'special_consideration'
+    'user_id',
+    'employer_id',
+    'schedule_id',
+    'transaction_id',
+    'as_is_due_date',
+    'to_be_due_date',
+    'amount',
+    'repaid',
+    'outstanding'
   ]
 
   export default {
@@ -95,7 +135,9 @@
       return {
         data: {
           raw: null,
-          mapping: {}
+          employer: null,
+          currentPayroll: [],
+          newPayroll: []
         },
         cacheProcessed: false,
         headers: HEADERS,
@@ -106,9 +148,6 @@
       }
     },
     mounted() {
-      HEADERS.forEach(_ => {
-        this.data.mapping[_] = null
-      })
       this.restoreCache()
       this.recomputeOutput()
     },
@@ -117,17 +156,61 @@
         return (this.data.raw || '')
           .split(/\r?\n|\r|\n/g)[0].split(/\t/g)
       },
-      phoneIndex() {
-        return this.inputHeaders.indexOf(this.data.mapping.phone)
+      payrollDates() {
+        return (new Array(30)).fill(null).map((_, i) => i + 1)
       },
-      hiredDateIndex() {
-        return this.inputHeaders.indexOf(this.data.mapping['hired_date'])
+      asIsDueDateIndex() {
+        return this.headers.indexOf('as_is_due_date')
       },
-      birthdateIndex() {
-        return this.inputHeaders.indexOf(this.data.mapping.birthdate)
+      toBeDueDateIndex() {
+        return this.headers.indexOf('to_be_due_date')
       },
-      emailIndex() {
-        return this.inputHeaders.indexOf(this.data.mapping.email)
+      outstandingIndex() {
+        return this.headers.indexOf('outstanding')
+      },
+      checks() {
+        const oldPayroll = {};
+        const newPayroll = {};
+        const result = {};
+        (this.outputMapped || []).forEach(_ => {
+          oldPayroll[`${_[this.asIsDueDateIndex]}`] = oldPayroll[`${_[this.asIsDueDateIndex]}`] || 0
+          newPayroll[`${_[this.toBeDueDateIndex]}`] = newPayroll[`${_[this.toBeDueDateIndex]}`] || 0
+          oldPayroll[`${_[this.asIsDueDateIndex]}`] += Math.round((parseFloat((_[this.outstandingIndex] || 0))) * 100) / 100
+          newPayroll[`${_[this.toBeDueDateIndex]}`] += Math.round((parseFloat((_[this.outstandingIndex] || 0))) * 100) / 100
+          if(_[this.asIsDueDateIndex] || _[this.toBeDueDateIndex]) {
+            result[`${_[this.asIsDueDateIndex]} → ${_[this.toBeDueDateIndex]}`] = {
+              old: _[this.asIsDueDateIndex],
+              new: _[this.toBeDueDateIndex],
+              diffBetweenOldNew: ((new Date(_[this.toBeDueDateIndex])) - (new Date(_[this.asIsDueDateIndex]))) / (60 * 60 * 24 * 1000)
+            }
+          }
+        })
+        Object.keys(result).forEach(_ => {
+          result[_] = {
+            ...result[_],
+            amount: oldPayroll[result[_].old] - newPayroll[result[_].new],
+            amountValid: (oldPayroll[result[_].old] - newPayroll[result[_].new]) == 0,
+            diffValid: result[_].diffBetweenOldNew >= this.checkDiffDays.min && result[_].diffBetweenOldNew <= this.checkDiffDays.max
+          }
+        })
+        return result
+      },
+      checkDiffDays() {
+        try {
+          const diff = Math.min(Math.abs(this.data.newPayroll[0] - this.data.currentPayroll[0]), Math.abs(this.data.newPayroll[1] - this.data.currentPayroll[1]))
+          return {
+            min: diff - 1,
+            max: diff + 1
+          }
+        } catch (e) {
+          return {
+            min: 4,
+            max: 6
+          }
+        }
+      },
+      fullValid() {
+        return Object.values(this.checks).reduce((acc, _) => acc && _.amountValid && _.diffValid, true)
       }
     },
     methods: {
@@ -147,6 +230,7 @@
             .filter(_ => _ != "")
             .map(_ => _.split(/\t/g))
             .slice(1)
+            .filter(_ => _.length > 0)
           this.recomputeOutputMapped()
         } catch (e) {
           //
@@ -157,31 +241,40 @@
           this.outputMapped = this.output.map(_ => {
             return this.headers.map(__ => {
               let value = this.findValue(__, _)
-              if (__ == 'phone_number') {
-                value = this.cleanPhone(value)
-              }
-              if (__ == 'email') {
-                value = this.cleanEmail(value)
-              }
-              if (__ == 'hired_date') {
-                value = this.cleanHiredDate(value)
-              }
-              if (__ == 'birthdate') {
-                value = this.cleanBirthdate(value)
+              if (__ == 'to_be_due_date') {
+                const date = new Date(this.findValue('as_is_due_date', _));
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const day = date.getDate();
+
+                if (day === this.data.currentPayroll[0]) {
+                    if (this.data.newPayroll[0] < this.data.currentPayroll[0]) {
+                      value = new Date(year, month + 1, this.data.newPayroll[0] + 1).toISOString().split('T')[0];
+                    } else {
+                      value = new Date(year, month, this.data.newPayroll[0] + 1).toISOString().split('T')[0];
+                    }
+                } else if (day === this.data.currentPayroll[1] || day === (new Date(year, month + 1, 0)).getDate()) {
+                    if (this.data.newPayroll[1] < this.data.currentPayroll[1]) {
+                      value = new Date(year, month + 1, this.data.newPayroll[1] + 1).toISOString().split('T')[0];
+                    } else {
+                      value = new Date(year, month, this.data.newPayroll[1] + 1).toISOString().split('T')[0];
+                    }
+                }
               }
               return value
             })
           })
+
           if (this.cacheProcessed) {
             this.storeCache()
           }
         } catch (e) {
-          //
+          console.log(e)
         }
       },
       findValue(header, row) {
         try {
-          const inputHeader = this.data.mapping[header]
+          const inputHeader = header
           if (!inputHeader) {
             return ''
           }
@@ -194,8 +287,7 @@
       storeCache() {
         const obj = {
           data: {
-            ...this.data,
-            mapping: { ...this.data.mapping }
+            ...this.data
           }
         }
         localStorage.setItem(CACHE_KEY, JSON.stringify(obj))
@@ -262,81 +354,10 @@
 
         files.forEach((_, index) => {
           link.setAttribute('href', _)
-          link.setAttribute('download', `els_${formattedDate}_${index + 1}.csv`)
+          link.setAttribute('download', `${data.employer || ''}_rescheduling_${formattedDate}_${index + 1}.csv`)
 
           link.click()
         })
-      },
-      cleanPhone(phone) {
-        if (this.phoneIndex == -1) {
-          return phone
-        }
-
-        let value = phone;
-        try {
-          value = `${value}`.match(/[+0-9]+/g)[0]
-        } catch (e) {
-          //
-        }
-        if (value.indexOf("+63") >= 0) {
-          value = value.replace("+63", "");
-        }
-        if (value.indexOf("+") >= 0) {
-          value = value.replace("+", "");
-        }
-        return value
-      },
-      cleanEmail(email) {
-        if (this.emailIndex == -1) {
-          return email
-        }
-
-        let value = email
-        value = value.split('\n')[0]
-        value = value.split(';')[0]
-        value = value.split(',')[0]
-        value = value.split('\t')[0]
-        return value
-      },
-      cleanHiredDate(date) {
-        if (this.hiredDateIndex == -1) {
-          return date
-        }
-        return this.convertDate(this.output.slice(0, 100).map(_ => _[this.hiredDateIndex]), date)
-      },
-      cleanBirthdate(date) {
-        if (this.birthdateIndex == -1) {
-          return date
-        }
-
-        return this.convertDate(this.output.slice(0, 100).map(_ => _[this.birthdateIndex]), date)
-      },
-      convertDate(values, date) {
-        let value = date
-        const separator = `${value}`.includes('/') ? '/' : '-'
-
-        const left = values.map(_ => _.split(separator)[0]).filter(_ => !isNaN(_))
-        const max = left.reduce((acc, _) => acc > _ ? acc : _, 0)
-        var format = max > 31 ? 'YYYY-MM-DD' : max > 12 ? 'DD-MM-YYYY' : 'MM-DD-YYYY'
-
-        const split = value.split(separator)
-        try {
-          switch (format) {
-            case 'DD-MM-YYYY':
-              value = `${split[2]}-${`${split[1]}`.length == 1 ? `0${split[1]}` : split[1]}-${`${split[0]}`.length == 1 ? `0${split[0]}` : split[0]}`
-              break;
-            case 'MM-DD-YYYY':
-              value = `${split[2]}-${`${split[0]}`.length == 1 ? `0${split[0]}` : split[0]}-${`${split[1]}`.length == 1 ? `0${split[1]}` : split[1]}`
-              break;
-            default:
-            case 'YYYY-MM-DD':
-              value = `${split[0]}-${`${split[1]}`.length == 1 ? `0${split[1]}` : split[1]}-${`${split[2]}`.length == 1 ? `0${split[2]}` : split[2]}`
-              break;
-          }
-        } catch (e) {
-          //
-        }
-        return value
       }
     }
   }
