@@ -8,8 +8,8 @@
           <input type="file" class="form-control" id="file" @change="onFileChange" accept=".csv" :multiple="false" />
         </div>
         <div class="mt-3">
-          <label for="file">Employer Name</label><br>
-          <input type="text" class="form-control" id="employer" v-model="data.employer">
+          <label for="employer">Employer Name</label><br>
+          <input type="text" class="form-control" id="employer" v-model="data.employer" @input="storeCache">
         </div>
       </div>
       <div class="col-12 col-md-6">
@@ -135,7 +135,7 @@
       return {
         data: {
           raw: null,
-          employer: null,
+          employer: '',
           currentPayroll: [],
           newPayroll: []
         },
@@ -269,7 +269,7 @@
             this.storeCache()
           }
         } catch (e) {
-          console.log(e)
+          //
         }
       },
       findValue(header, row) {
@@ -303,7 +303,7 @@
           }
           if (!FORCE_CACHE) {
             this.clear()
-            console.log(`* ELS FORMATTER: Invalidated cache`)
+            console.log(`* RESCHEDULER: Invalidated cache`)
           } else {
             const data = clear.data
             Object.keys(data || {}).forEach(_ => {
@@ -311,7 +311,7 @@
                 this.data[_] = data[_]
               }
             })
-            console.log(`* ELS FORMATTER: Restored cache`)
+            console.log(`* RESCHEDULER: Restored cache`)
           }
         }
         this.cacheProcessed = true
@@ -354,7 +354,7 @@
 
         files.forEach((_, index) => {
           link.setAttribute('href', _)
-          link.setAttribute('download', `${data.employer || ''}_rescheduling_${formattedDate}_${index + 1}.csv`)
+          link.setAttribute('download', `${this.data.employer || ''}_rescheduling_${formattedDate}_${index + 1}.csv`)
 
           link.click()
         })
