@@ -154,6 +154,7 @@
     computed: {
       inputHeaders () {
         return (this.data.raw || '')
+          .replace(/"/g, '')
           .split(/\r?\n|\r|\n/g)[0].split(/\t/g)
       },
       payrollDates() {
@@ -203,6 +204,7 @@
             max: diff + 1
           }
         } catch (e) {
+          console.log(e)
           return {
             min: 4,
             max: 6
@@ -226,6 +228,7 @@
       recomputeOutput() {
         try {
           this.output = (this.data.raw || '')
+            .replace(/"/g, '')
             .split(/\r?\n|\r|\n/g)
             .filter(_ => _ != "")
             .map(_ => _.split(/\t/g))
@@ -233,7 +236,7 @@
             .filter(_ => _.length > 0)
           this.recomputeOutputMapped()
         } catch (e) {
-          //
+          console.log(e)
         }
       },
       recomputeOutputMapped() {
@@ -269,7 +272,7 @@
             this.storeCache()
           }
         } catch (e) {
-          //
+          console.log(e)
         }
       },
       findValue(header, row) {
@@ -281,6 +284,7 @@
           const inputIndex = this.inputHeaders.indexOf(inputHeader)
           return row[inputIndex]
         } catch (e) {
+          console.log(e)
           return ''
         }
       },
@@ -299,6 +303,7 @@
           try {
             clear = JSON.parse(res)
           } catch (err) {
+            console.log(err)
             clear = {}
           }
           if (!FORCE_CACHE) {
