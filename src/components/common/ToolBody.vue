@@ -27,8 +27,8 @@ export default {
   data() {
     return {
       tooltip: {
-        old: '',
-        guide: ''
+        old: 'Done manually via MySQL query and Excel scripts',
+        guide: 'https://scribehow.com/shared/How_to_use_the_rescheduler__y_f_TCHATra9nTJFNCijzg'
       }
     }
   },
